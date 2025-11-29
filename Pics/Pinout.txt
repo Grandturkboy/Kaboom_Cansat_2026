@@ -1,0 +1,22 @@
+LEFT SIDE (top → bottom)                   RIGHT SIDE (top → bottom)
+──────────────────────────                 ──────────────────────────
+
+  3V3          (Power)                       GND
+  EN           (Enable / Reset)              P23   (VSPI MOSI)
+  SVP          (ADC input-only)              P22   (I2C SCL)
+  SUN          (ADC input-only)              TX    (UART0 TX)
+  P31          (ADC / Touch)                 RX    (UART0 RX)
+  P35          (ADC input-only)              P21   (I2C SDA)
+  P32          (ADC / Touch)                 GND
+  P33          (Digital input-only)          P19   (VSPI MISO)
+  P25          (ADC / DAC1)                  P18   (VSPI CLK)
+  P26          (ADC / DAC2)                  P5    (SPI CS)
+  P27          (Digital / Touch)             P17   (UART2 TX)
+  P14          (HSPI CLK)                    P16   (UART2 RX)
+  P12          (Boot pin – sensitive)        P4    (ADC / Touch)
+  GND          (Ground)                      P0    (Boot pin – sensitive)
+  P13          (HSPI MOSI)                   P2    (Boot pin – sensitive)
+  SD2          (Flash pin — avoid)           P15   (Boot pin – caution)
+  SD3          (Flash pin — avoid)           SD1   (Flash pin — avoid)
+  GND          (Ground)                      SDD   (Flash pin — avoid)
+  5V           (Power)                       CLK   (Flash clock — avoid)
