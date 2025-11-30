@@ -20,7 +20,8 @@ lora.setFrequency(433000000)
 lora.setTxPower(10)
 lora.setSpreadingFactor(10)
 lora.setSignalBandwidth(125000)
-lora.setCodingRate(5)  
+lora.setCodingRate(5)
+lora.enableCRC(True) #Error detection
 
 # Put module in continuous receive mode
 lora.receive()
@@ -37,4 +38,4 @@ while True:
     else:
         counter += 1
         print("Waiting for packet...", counter)
-    sleep(0.5)
+    sleep(1)
