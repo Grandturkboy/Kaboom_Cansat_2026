@@ -21,7 +21,8 @@ lora.setFrequency(433000000)
 lora.setTxPower(10)
 lora.setSpreadingFactor(10)
 lora.setSignalBandwidth(125000)
-lora.setCodingRate(5)     
+lora.setCodingRate(5)
+lora.enableCRC(True) #Error detection
 
 # I2C setup
 i2c = I2C(0, scl=Pin(22), sda=Pin(21))
@@ -41,4 +42,4 @@ while True:
     msg = "Temp AHT20: {}, Humidity: {}, Temp BMP280: {}, Pressure: {}, Temp Difference: {}".format(temp_aht, hum, temp_bmp, pressure_hpa, temp_diff)
     lora.println(msg)
     print("Sent:", msg)
-    sleep(0.1)
+    sleep(1)
