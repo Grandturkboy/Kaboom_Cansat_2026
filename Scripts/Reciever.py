@@ -9,16 +9,16 @@ spi = SPI(1, baudrate=1000000, sck=Pin(18), mosi=Pin(23), miso=Pin(19))
 pins = {"ss": 5, "dio0": 26, "reset": 14}
 
 # LoRa parameters
-params = {"frequency": 433e6, "sync_word": 0x34}
+params = {"frequency": 868e6, "sync_word": 0x34}
 
 # Initialize LoRa
 lora = SX127x(spi, pins, params)
 RX_DONE_MASK = 0x40
 
 # Configure LoRa
-lora.setTxPower(10)
+lora.setTxPower(14)
 lora.setSpreadingFactor(10)
-lora.setSignalBandwidth(125000)
+lora.setSignalBandwidth(250000)
 lora.setCodingRate(5)
 lora.enableCRC(True) #Error detection
 
