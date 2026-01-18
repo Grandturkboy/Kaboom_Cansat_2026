@@ -1,10 +1,6 @@
 from machine import Pin, SPI, I2C
-from time import sleep
-import time
 from sx127x import SX127x
-import ahtx0
-import bmp280
-import struct
+import ahtx0, bmp280, time, struct
 
 # SPI setup
 spi = SPI(1, baudrate=1000000, sck=Pin(18), mosi=Pin(23), miso=Pin(19))
@@ -55,4 +51,4 @@ for i in range(100):
     print("TX interval:", (delta - 64 - 750), "ms")
     last_send = now
     
-    sleep(0.064 + 0.75) # To reach around 250ms + 750ms
+    time.sleep(0.064 + 0.75) # To reach around 250ms + 750ms
