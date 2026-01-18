@@ -20,7 +20,7 @@ lora = SX127x(spi, pins, params)
 
 # Configure LoRa
 lora.setTxPower(17)
-lora.setSpreadingFactor(9)
+lora.setSpreadingFactor(7)
 lora.setSignalBandwidth(250000)
 lora.setCodingRate(5)
 lora.enableCRC(True) #Error detection
@@ -39,7 +39,7 @@ last_send = time.ticks_ms()
 for i in range(100):
     now = time.ticks_ms()
     delta = time.ticks_diff(now, last_send) # Usually around 186ms
-    
+
     # Read sensors and convert data to integers
     temp_aht = int(round(aht.temperature, 2) * 100)
     hum = int(round(aht.relative_humidity, 2) * 100)
@@ -52,7 +52,7 @@ for i in range(100):
     lora.println(msg)
     print("Sent:", temp_aht, hum, temp_bmp, pressure_hpa)
     
-    print("TX interval:", delta, "ms")
+    print("TX interval:", (delta - 64 - 750), "ms")
     last_send = now
     
     sleep(0.064 + 0.75) # To reach around 250ms + 750ms
