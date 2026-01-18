@@ -1,7 +1,6 @@
 from machine import Pin, I2C
 from sx1262 import SX1262
-import ssd1306
-import struct, time
+import struct, time, ssd1306
 
 lora = SX1262(spi_bus=1, clk=9, mosi=10, miso=11, cs=8, irq=14, rst=12, gpio=13)
 
@@ -62,32 +61,48 @@ def drawLine(x1, y1, x2, y2, color):
             y1 += sy
 
 def plotOnOLED(times, values, name, Forced, minV, maxV):
-    maxT = times[0]
-    minT = times[-1]
+    minT = times[0]
+    maxT = times[-1]
+
+    if maxT == minT:
+        return
+    
     if not Forced:
         maxV = max(values)
         minV = min(values)
     if maxV == minV:
         maxV += 1
     
-    # Creating canvas
+    arvV = sum(values) / len(values)
+
+    # Creating plotting boundaries
+    plot_left   = 1
+    plot_right  = 126
+    plot_top    = 1
+    plot_bottom = 51
+
+    height = plot_bottom - plot_top
+    width = plot_right - plot_left
+
+    # Creating border and text
     oled.fill(0)
     drawLine(0, 0, 127, 0, 1)
     drawLine(127, 1, 127, 52, 1)
     drawLine(127, 52, 0, 52, 1)
     drawLine(0, 52, 0, 0, 1)
     oled.text(f"{name}", 40, 56)
-    height = 50
-    width = 126
+    oled.text(f"{arvV:.2f}", 40, 5)
 
+    # Plotting
     for i in range(len(times) - 1):
-        x1 = int(((times[i] - minT) / (maxT - minT)) * width)
-        x2 = int(((times[i + 1] - minT) / (maxT - minT)) * width)
+        x1 = plot_left + int(((times[i] - minT) / (maxT - minT)) * width)
+        x2 = plot_left + int(((times[i + 1] - minT) / (maxT - minT)) * width)
 
-        y1 = int(((values[i] - minV) / (maxV - minV)) * height)
-        y2 = int(((values[i + 1] - minV) / (maxV - minV)) * height)
+        y1 = plot_bottom - int(((values[i] - minV) / (maxV - minV)) * height)
+        y2 = plot_bottom - int(((values[i + 1] - minV) / (maxV - minV)) * height)
 
         drawLine(x1, y1, x2, y2, 1)
+
     oled.show()
     time.sleep(2.5)
 
@@ -142,7 +157,7 @@ def handleMessage(msg):
     oled.text(f"{pCount}pc", 0, 48)
     oled.text(f"{str(delta)}ms", 88, 48)
 
-    # Animation in order for the new packets to be visible
+    # Animation in order for the new packets to be more noticable
     if packetCount % 4 == 0:
         threeByThree(53, 54, 1)
         threeByThree(60, 58, 1)
@@ -167,12 +182,12 @@ def handleMessage(msg):
     oled.show()
 
 while True:
-    if time.ticks_diff(time.ticks_ms(), lastReceived) > 2000 and packetCount != 0:
+    if time.ticks_diff(time.ticks_ms(), lastReceived) > 2000 and packetCount != 0: # If no data for 2 seconds and there is data to plot, plot it
         plotOnOLED(timeList, temp1List, "Temp1", True, 0 , 40)
         plotOnOLED(timeList, temp2List, "Temp2", True, 0 , 40)
         plotOnOLED(timeList, humList, "Humidity", True, 0 , 100)
-        plotOnOLED(timeList, presList, "Pressure", False, None , None)
-    elif packetCount == 0:
+        plotOnOLED(timeList, presList, "Pressure", True, 900 , 1100)
+    elif packetCount == 0: # If no data for 2 seconds and there is no data to plot, play listening animation
         animFrame += 1
         oled.fill(0)
         oled.text("Waiting for data", 0, 16)
