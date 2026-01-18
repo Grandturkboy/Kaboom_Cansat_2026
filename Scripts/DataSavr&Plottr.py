@@ -15,6 +15,8 @@ timeList = []
 # Checking for the correct data format
 def dataValidation(line):
     try:
+        if line is None:
+            return None
         data = line.split(',')
         if len(data) != 5:
             return None
