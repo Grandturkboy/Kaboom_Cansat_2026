@@ -8,15 +8,18 @@ errList = []
 
 # Reading the data
 with open("Data.txt", "r") as f:
-    for line in f:
-        data = line.split(",")
-        time = float(data[0])
-        temp = float(data[1])
-        pres = float(data[2])
+    for lI, line in enumerate(f):
+        data = line.strip().split(",")
+        if data[3] == " OK":
+            time = float(data[0])
+            temp = float(data[1])
+            pres = float(data[2])
 
-        tempList.append(temp)
-        presList.append(pres)
-        timeList.append(time)
+            tempList.append(temp)
+            presList.append(pres)
+            timeList.append(time)
+        else:
+            print(f"Error found in data line {lI + 1} with error {data[3]}")
 
 # Plotting the data
 fig, axs = plt.subplots(1, 2)
