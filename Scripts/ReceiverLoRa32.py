@@ -14,8 +14,7 @@ def callBack(events):
     if events & SX1262.RX_DONE:
         msg, err = lora.recv()
         error = SX1262.STATUS[err]
-        handleMessage(msg)
-        print(error) if error != "ERR_NONE" else None
+        handleMessage(msg, error)
 
 # Turn on the OLED power pin
 OLED_VEXT_PIN = 36
@@ -108,8 +107,6 @@ def plotOnOLED(times, values, name, Forced, minV, maxV):
 
 # Creating the lists for plotting and data storage
 temp1List = []
-temp2List = []
-humList = []
 presList = []
 timeList = []
 
@@ -123,35 +120,34 @@ animFrame = 0
 lastReceived = time.ticks_ms()
 start = lastReceived
 
-def handleMessage(msg):
+def handleMessage(msg, error):
     global packetCount, lastReceived, start
     now = time.ticks_ms()
     delta = time.ticks_diff(now, lastReceived)
     lastReceived = now
 
-    t1, h, t2, p = struct.unpack("<ffff", msg) # Unpacking the data using struct
+    # Unpacking the data using struct
+    t1, p = struct.unpack("<hh", msg) 
     
+    if error == "ERR_NONE":
+        error = "OK"
+
     # Converting to floats
     t1 /= 100
-    t2 /= 100
-    h /= 100
     p /= 10
     packetCount += 1
 
     # Appending the data to the lists
     temp1List.append(t1)
-    temp2List.append(t2)
-    humList.append(h)
     presList.append(p)
     timeList.append(now - start)
-    print(f"{t1}, {h}, {t2}, {p}, {now - start}") # Sending the data to the connected computer
+    print(f"{t1}, {p}, {now - start}, {error}") # Sending the data to the connected computer
 
     # Displaying data
     oled.fill(0)
     oled.text(f"Temp aht : {t1:.2f}", 0, 0)
-    oled.text(f"Humidity : {h:.2f}", 0, 12)
-    oled.text(f"Temp bmp : {t2:.2f}", 0, 24)
-    oled.text(f"Pressure : {p:.2f}", 0, 36)
+    oled.text(f"Pressure : {p:.2f}", 0, 12)
+    oled.text(f"Error    : {error}", 0, 24)
     pCount = str(packetCount)
     pCount = f"{pCount:3}"
     oled.text(f"{pCount}pc", 0, 48)
@@ -184,13 +180,13 @@ def handleMessage(msg):
 while True:
     if time.ticks_diff(time.ticks_ms(), lastReceived) > 2000 and packetCount != 0: # If no data for 2 seconds and there is data to plot, plot it
         plotOnOLED(timeList, temp1List, "Temp1", True, 0 , 40)
-        plotOnOLED(timeList, temp2List, "Temp2", True, 0 , 40)
-        plotOnOLED(timeList, humList, "Humidity", True, 0 , 100)
         plotOnOLED(timeList, presList, "Pressure", True, 900 , 1100)
+
     elif packetCount == 0: # If no data for 2 seconds and there is no data to plot, play listening animation
         animFrame += 1
         oled.fill(0)
         oled.text("Waiting for data", 0, 16)
+        oled.text(f"{round(time.ticks_diff(time.ticks_ms(), lastReceived) / 1000, 2)} s", 40, 48)
         if animFrame % 10 <= 5:
             tx = (animFrame % 10) * "."
             oled.text(tx, 64 - (animFrame % 10) * 4, 32)
