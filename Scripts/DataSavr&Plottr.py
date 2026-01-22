@@ -6,11 +6,10 @@ import time
 ser = serial.Serial('COM5', 115200, timeout=10)
 
 # Lists to store the data
-temp1List = []
-temp2List = []
-humList = []
+tempList = []
 presList = []
 timeList = []
+errList = []
 
 # Checking for the correct data format
 def dataValidation(line):
@@ -18,16 +17,15 @@ def dataValidation(line):
         if line is None:
             return None
         data = line.split(',')
-        if len(data) != 5:
+        if len(data) != 4:
             return None
         
-        t1 = float(data[0])
-        h = float(data[1])
-        t2 = float(data[2])
-        p = float(data[3])
-        time = float(data[4]) / 1000
+        t = float(data[0])
+        p = float(data[1])
+        time = float(data[2]) / 1000
+        error = data[3]
 
-        return t1, h, t2, p, time
+        return t, p, time, error
 
     except ValueError:
         return None
@@ -42,7 +40,7 @@ def tryToRead():
 
 # Turning on interactive mode and setting up grid display
 plt.ion()
-fig, axs = plt.subplots(2, 2)
+fig, axs = plt.subplots(1, 2)
 
 timeOut = 2.0
 lastMsg = time.time()
@@ -57,37 +55,24 @@ while True:
         patienceCounter = 0
 
         # Data storage
-        temp1List.append(data[0])
-        humList.append(data[1])
-        temp2List.append(data[2])
-        presList.append(data[3])
-        timeList.append(data[4])
+        tempList.append(data[0])
+        presList.append(data[1])
+        timeList.append(data[2])
+        errList.append(data[3])
 
         # Plotting
-        axs[0, 0].clear()
-        axs[0, 1].clear()
-        axs[1, 0].clear()
-        axs[1, 1].clear()
+        axs[0].clear()
+        axs[1].clear()
 
-        axs[0, 0].plot(timeList, temp1List)
-        axs[0, 0].set_xlabel("Time")
-        axs[0, 0].set_ylabel("Temp1")
-        axs[0, 0].set_title("Temp1")
+        axs[0].plot(timeList, tempList)
+        axs[0].set_xlabel("Time")
+        axs[0].set_ylabel("Temp1")
+        axs[0].set_title("Temp1")
 
-        axs[1, 1].plot(timeList, humList)
-        axs[1, 1].set_xlabel("Time")
-        axs[1, 1].set_ylabel("Humidity")
-        axs[1, 1].set_title("Humidity")
-
-        axs[0, 1].plot(timeList, temp2List)
-        axs[0, 1].set_xlabel("Time")
-        axs[0, 1].set_ylabel("Temp2")
-        axs[0, 1].set_title("Temp2")
-
-        axs[1, 0].plot(timeList, presList)
-        axs[1, 0].set_xlabel("Time")
-        axs[1, 0].set_ylabel("Pressure")
-        axs[1, 0].set_title("Pressure")
+        axs[1].plot(timeList, presList)
+        axs[1].set_xlabel("Time")
+        axs[1].set_ylabel("Pressure")
+        axs[1].set_title("Pressure")
 
         plt.tight_layout()
         plt.show()
@@ -113,7 +98,7 @@ plt.ioff() # Disabling interactive mode
 with open("Data.txt", "w") as f:
     if len(timeList) != 0:
         for i in range(len(timeList)):
-            f.write(f"{timeList[i]},{temp1List[i]},{humList[i]},{temp2List[i]},{presList[i]}\n")
+            f.write(f"{timeList[i]},{tempList[i]},{presList[i]},{errList[i]}\n")
             f.flush()
 
 plt.show()
