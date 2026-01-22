@@ -39,14 +39,14 @@ for i in range(100):
     # Read sensors and convert data to integers
     temp_aht = int(round(aht.temperature, 2) * 100)
     hum = int(round(aht.relative_humidity, 2) * 100)
-    temp_bmp = int(round(bmp.temperature, 2) * 100)
+    # temp_bmp = int(round(bmp.temperature, 2) * 100)
     pressure_hpa = int(round(bmp.pressure / 100, 1) * 10)
-    temp_diff = round(temp_aht - temp_bmp, 2)
+    # temp_diff = round(temp_aht - temp_bmp, 2)
 
     #Using struct to pack the data and send via LoRa and print
-    msg = struct.pack("<ffff", temp_aht, hum, temp_bmp, pressure_hpa)
+    msg = struct.pack("<hh", temp_aht, pressure_hpa)
     lora.println(msg)
-    print("Sent:", temp_aht, hum, temp_bmp, pressure_hpa)
+    print("Sent:", temp_aht, hum, pressure_hpa)
     
     print("TX interval:", (delta - 64 - 750), "ms")
     last_send = now
