@@ -1,7 +1,10 @@
-import serial, struct, binascii
+import serial, struct, binascii, time
 
 LOG_FORMAT = "<IiiihHHB"
 RECORD_SIZE = struct.calcsize(LOG_FORMAT)
+
+p0 = 1013.25
+presFiltered = p0
 
 def receiveFiles():
     try:
@@ -47,6 +50,7 @@ def createDatabase(data):
             "alt": [],
             "temp": [],
             "pressure": [],
+            "pAlt": [],
             "humidity": [],
             "gpsValid": []
         }
@@ -59,6 +63,7 @@ def createDatabase(data):
             db["alt"].append(alt / 10)
             db["temp"].append(temp / 100)
             db["pressure"].append(pres / 10)
+            db["pAlt"].append(altFromPress(p0, pres / 10))
             db["humidity"].append(hum / 100)
             db["gpsValid"].append(bool(valid))
 
@@ -79,8 +84,9 @@ def printFile(fname):
     print("Time        Latitude     Longitude   Altitude    Temperature   Pressure      Humidity     GPS Valid")
 
     for i in range(n):
-        print(f"{db['time'][i]:.0f}   {db['lat'][i]:.6f}    {db['lon'][i]:.6f}    {db['alt'][i]:.1f}        {db['temp'][i]:.2f}        {db['pressure'][i]:.1f}        {db['humidity'][i]:.2f}        {db['gpsValid'][i]}")
-        print()
+        date = time.localtime(db['time'][i] + 946681600)
+        printTime = (f"{date.tm_year}.{date.tm_mon:02d}.{date.tm_mday:02d} {date.tm_hour:02d}:{date.tm_min:02d}:{date.tm_sec:02d}")
+        print(f"{printTime}   {db['lat'][i]:.6f}    {db['lon'][i]:.6f}    {db['alt'][i]:.1f}        {db['temp'][i]:.2f}        {db['pressure'][i]:.1f}        {db['humidity'][i]:.2f}        {db['gpsValid'][i]}")
 
 def readFile():
     with open("OnBoardData.txt", "r") as f:
@@ -115,6 +121,12 @@ def readFile():
                 database[name]["gpsValid"].append(bool(valid))
 
     return database
+
+def altFromPress(p0, p):
+    global  presFiltered
+    presFiltered = 0.9 * presFiltered + 0.1 * p
+    alt = 44330 * (1 - (presFiltered / p0) ** 0.1903)
+    return alt
 
 try:
     ser = serial.Serial("COM5", 115200, timeout=20)
