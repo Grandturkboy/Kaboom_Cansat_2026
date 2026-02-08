@@ -1,12 +1,12 @@
 from machine import Pin, I2C
 from sx1262 import SX1262
-import struct, time, ssd1306
+import struct, time, ssd1306, os
 
 lora = SX1262(spi_bus=1, clk=9, mosi=10, miso=11, cs=8, irq=14, rst=12, gpio=13)
 
 # LoRa initialization
-lora.begin(freq=868, bw=250.0, sf=7, cr=5, syncWord=0x34,
-         power=17, currentLimit=60.0, preambleLength=8,
+lora.begin(freq=868, bw=250.0, sf=10, cr=5, syncWord=0x34,
+         power=14, currentLimit=60.0, preambleLength=8,
          implicit=False, crcOn=True, txIq=False, rxIq=False,
          tcxoVoltage=1.7, useRegulatorLDO=False, blocking=False)
 
@@ -105,53 +105,8 @@ def plotOnOLED(times, values, name, Forced, minV, maxV):
     oled.show()
     time.sleep(2.5)
 
-# Creating the lists for plotting and data storage
-temp1List = []
-presList = []
-timeList = []
-
-# Start listening. Non blocking event loop
-lora.setBlockingCallback(False, callBack)
-
-# Data collection and display variables
-packetCount = 0
-animFrame = 0
-
-lastReceived = time.ticks_ms()
-start = lastReceived
-
-def handleMessage(msg, error):
-    global packetCount, lastReceived, start
-    now = time.ticks_ms()
-    delta = time.ticks_diff(now, lastReceived)
-    lastReceived = now
-
-    # Unpacking the data using struct
-    t1, p = struct.unpack("<hh", msg) 
-    
-    if error == "ERR_NONE":
-        error = "OK"
-
-    # Converting to floats
-    t1 /= 100
-    p /= 10
-    packetCount += 1
-
-    # Appending the data to the lists
-    temp1List.append(t1)
-    presList.append(p)
-    timeList.append(now - start)
-    print(f"{t1}, {p}, {now - start}, {error}") # Sending the data to the connected computer
-
-    # Displaying data
-    oled.fill(0)
-    oled.text(f"Temp aht : {t1:.2f}", 0, 0)
-    oled.text(f"Pressure : {p:.2f}", 0, 12)
-    oled.text(f"Error    : {error}", 0, 24)
-    pCount = str(packetCount)
-    pCount = f"{pCount:3}"
-    oled.text(f"{pCount}pc", 0, 48)
-    oled.text(f"{str(delta)}ms", 88, 48)
+def loadingAnimation():
+    global packetCount
 
     # Animation in order for the new packets to be more noticable
     if packetCount % 4 == 0:
@@ -174,7 +129,130 @@ def handleMessage(msg, error):
         threeByThree(60, 58, 1)
         threeByThree(68, 58, 1)
         threeByThree(75, 54, 1)
+
+def storageCheck():
+    stat = os.statvfs("/")
+    free = stat[0] * stat[3]
+    total = stat[0] * stat[2]
+    used = total - free
+    return used, free, total
+
+def listLogFiles():
+    files = []
+    for f in os.listdir("/"):
+        if f.startswith("log_") and f.endswith(".bin"):
+            files.append(f)
+    files.sort()
+    return files
+
+def nextLogFilename():
+    files = listLogFiles()
+    if not files:
+        return "log_0001.bin"
+
+    last = files[-1]
+    number = int(last[4:-4])
+    return "log_%04d.bin" % (number + 1)
+
+def cleanUpLogs():  
+    files = listLogFiles()
+
+    while True:
+        used, free, total = storageCheck()
+
+        if free > MIN_FREE_BYTES and len(files) < MAX_LOG_FILES:
+            break
         
+        if not files:
+            break
+        
+        oldest = files.pop(0)
+        print("Deleting", oldest)
+        os.remove(oldest)
+
+def logData():
+    global firsLog
+    record = struct.pack(LOG_STRUCT, int(timeList[-1] * 1000), int(temp1List[-1] * 100), int(presList[-1] * 10), int(errList[-1]))
+    logBuffer.append(record)
+
+    if len(logBuffer) >= LOG_BUFFER_SIZE:
+        if firsLog:
+            firsLog = False
+            with open(LOG_FILE, "wb") as f:
+                pass
+
+        with open(LOG_FILE, "ab") as f:
+            for r in logBuffer:
+                f.write(r)
+            logBuffer.clear()
+        oled.text("Data saved", 64, 32)
+        oled.show()
+
+# Creating the lists for plotting and data storage
+temp1List = []
+presList = []
+timeList = []
+errList = []
+
+# Start listening. Non blocking event loop
+lora.setBlockingCallback(False, callBack)
+
+# Data collection and display variables
+packetCount = 0
+animFrame = 0
+
+lastReceived = time.ticks_ms()
+start = lastReceived
+
+LOG_FILE = nextLogFilename()
+LOG_BUFFER_SIZE = 30
+LOG_STRUCT = "<IHHB"
+
+MIN_FREE_BYTES = 200000
+MAX_LOG_FILES = 10
+
+logBuffer = []
+firsLog = True
+cleanUpLogs()
+
+def handleMessage(msg, error):
+    global packetCount, lastReceived, start
+    now = time.ticks_ms()
+    delta = time.ticks_diff(now, lastReceived)
+    lastReceived = now
+
+    # Unpacking the data using struct
+    t1, p = struct.unpack("<hh", msg) 
+    
+    if error == "ERR_NONE":
+        error = "OK"
+
+    # Converting to floats
+    t1 /= 100
+    p /= 10
+    packetCount += 1
+
+    # Appending the data to the lists
+    temp1List.append(t1)
+    presList.append(p)
+    timeList.append(now - start)
+    errList.append(0) if error == "OK" else errList.append(1)
+
+    logData()
+    print(f"{t1}, {p}, {now - start}, {error}") # Sending the data to the connected computer
+
+    # Displaying data
+    oled.fill(0)
+    oled.text(f"Temp aht : {t1:.2f}", 0, 0)
+    oled.text(f"Pressure : {p:.2f}", 0, 12)
+    oled.text(f"Error    : {error}", 0, 24)
+    pCount = str(packetCount)
+    pCount = f"{pCount:3}"
+    oled.text(f"{pCount}pc", 0, 48)
+    oled.text(f"{str(delta)}ms", 88, 48)
+
+    loadingAnimation()
+
     oled.show()
 
 while True:
