@@ -1,4 +1,4 @@
-from machine import Pin, SPI, I2C, UART
+from machine import Pin, SPI, I2C, UART, RTC
 from sx127x import SX127x
 from micropyGPS import MicropyGPS
 import ahtx0, bmp280, time, struct, os
@@ -37,34 +37,6 @@ my_gps = MicropyGPS()
 # Define the UART pins and create a UART object
 gps_serial = UART(2, baudrate=9600, tx=17, rx=16)
 
-def logData():
-    validity = 1 if measurements["gpsValid"] == True else 0
-
-    if validity == 1:
-        ts = time.mktime(time.localtime())
-    else:
-        ts = time.mktime(time.gmtime())
-
-    record = struct.pack(
-        LOG_STRUCT, 
-        int(ts), 
-        int(measurements["lat"]), 
-        int(measurements["lon"]), 
-        int(measurements["alt"]), 
-        int(measurements["temp"]), 
-        int(measurements["pressure"]), 
-        int(measurements["humidity"]),
-        validity
-    )
-
-    logBuffer.append(record)
-
-    if len(logBuffer) >= LOG_BUFFER_SIZE:
-        with open(LOG_FILE, "ab") as f:
-            for r in logBuffer:
-                f.write(r)
-            logBuffer.clear()
-
 def updateGPSdata():
     if gps_serial.any():
         data = gps_serial.read()
@@ -100,6 +72,7 @@ def printData():
     print('Temperature:', measurements["temp"] / 100, 'C°')
     print('Pressure:', measurements["pressure"] / 10 , 'hPa')
     print('Humidity:', measurements["humidity"] / 100 , '%')
+    print("Timestamp:", getTime())
 
     if my_gps.valid:
         print('Latitude:', my_gps.latitude_string())
@@ -157,6 +130,22 @@ def altFormat():
     lastAlt = alt
     return alt
 
+def getTime():
+    if my_gps.valid == 1:
+        rtc = RTC()
+        rtc.datetime((
+            2000 + my_gps.date[2],     
+            my_gps.date[1],     
+            my_gps.date[0],     
+            0,
+            (my_gps.timestamp[0] + 1) % 24,
+            my_gps.timestamp[1],
+            int(my_gps.timestamp[2]),
+            0       
+        ))
+
+    return time.time()
+
 def storageCheck():
     stat = os.statvfs("/")
     free = stat[0] * stat[3]
@@ -197,6 +186,37 @@ def cleanUpLogs():
         print("Deleting", oldest)
         os.remove(oldest)
 
+def logData():
+    global firsLog
+    validity = 1 if measurements["gpsValid"] == True else 0
+    ts = getTime()
+
+    record = struct.pack(
+        LOG_STRUCT, 
+        int(ts), 
+        int(measurements["lat"]), 
+        int(measurements["lon"]), 
+        int(measurements["alt"]), 
+        int(measurements["temp"]), 
+        int(measurements["pressure"]), 
+        int(measurements["humidity"]),
+        validity
+    )
+
+    logBuffer.append(record)
+
+    if len(logBuffer) >= LOG_BUFFER_SIZE:
+        if firsLog:
+            firsLog = False
+            print("Log file:", LOG_FILE)
+            with open(LOG_FILE, "wb") as f:
+                pass
+
+        with open(LOG_FILE, "ab") as f:
+            for r in logBuffer:
+                f.write(r)
+            logBuffer.clear()
+
 
 recievedGPScount = 0
 waitingCount = 0
@@ -225,17 +245,11 @@ MIN_FREE_BYTES = 200000
 MAX_LOG_FILES = 10
 
 logBuffer = []
-
+firsLog = True
 cleanUpLogs()
-
-print("Log file:", LOG_FILE)
-
-with open(LOG_FILE, "wb") as f:
-    pass
 
 # TODO: 
 # Graph data
-# Get correct time
 # Figure out 3d displaying
 
 while True:
@@ -251,7 +265,7 @@ while True:
         getSensorData()
         getUpdatedGPSdata()
         logData()
-        # sendData()
+        sendData()
         deltaSend = time.ticks_diff(now, last_send)
         printData()
         last_send = now
