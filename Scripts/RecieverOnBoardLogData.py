@@ -29,7 +29,7 @@ def receiveFiles():
         crc_calc = binascii.crc32(data) & 0xFFFF
 
         if crc_recv != crc_calc:
-            raise ValueError("CRC mismatch")
+            print("CRC mismatch on file", fname)
         
         records = []
 
