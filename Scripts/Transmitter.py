@@ -68,11 +68,12 @@ def sendData():
     print("Sent:", measurements["temp"], measurements["pressure"])
 
 def printData():
-    global recievedGPScount, waitingCount
+    global recievedGPScount, waitingCount, pulse_timestamps
     print('Temperature:', measurements["temp"] / 100, 'C°')
     print('Pressure:', measurements["pressure"] / 10 , 'hPa')
     print('Humidity:', measurements["humidity"] / 100 , '%')
     print("Timestamp:", getTime())
+    print("Geiger clicks per minute:" , len(pulse_timestamps))
 
     if my_gps.valid:
         print('Latitude:', my_gps.latitude_string())
@@ -80,6 +81,7 @@ def printData():
         print('Altitude:', my_gps.altitude, 'm')
         print('Satellites in use:', my_gps.satellites_in_use)
         print('GPS data count:', recievedGPScount )
+        print("Speed:", my_gps.speed_string())
         recievedGPScount += 1
     else:
         print('Waiting for GPS data...', waitingCount)
@@ -217,6 +219,22 @@ def logData():
                 f.write(r)
             logBuffer.clear()
 
+SIGNAL_PIN_NUM = 4
+DEBOUNCE_MS = 60
+WINDOW_SIZE_MS = 60000  # 1 minute window
+
+geiger_pin = Pin(SIGNAL_PIN_NUM, Pin.IN, Pin.PULL_UP)
+pulse_timestamps = []
+last_pulse_time = 0
+
+def handle_geiger_pulse(pin):
+    global last_pulse_time
+    current_time = time.ticks_ms()
+    if time.ticks_diff(current_time, last_pulse_time) > DEBOUNCE_MS:
+        pulse_timestamps.append(current_time)
+        last_pulse_time = current_time
+
+geiger_pin.irq(trigger=Pin.IRQ_FALLING, handler=handle_geiger_pulse)
 
 recievedGPScount = 0
 waitingCount = 0
@@ -260,6 +278,9 @@ while True:
     if time.ticks_diff(now, last_fix) >= 1000:
         getUpdatedGPSdata()
         last_fix = now
+    
+    while pulse_timestamps and time.ticks_diff(now, pulse_timestamps[0]) > WINDOW_SIZE_MS:
+        pulse_timestamps.pop(0)
 
     if time.ticks_diff(now, last_send) >= 1000:
         getSensorData()
