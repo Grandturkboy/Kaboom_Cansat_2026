@@ -202,7 +202,8 @@ def logData():
         int(measurements["temp"]), 
         int(measurements["pressure"]), 
         int(measurements["humidity"]),
-        validity
+        validity,
+        len(pulse_timestamps)
     )
 
     logBuffer.append(record)
@@ -257,7 +258,7 @@ lastAlt = 0
 
 LOG_FILE = nextLogFilename()
 LOG_BUFFER_SIZE = 30
-LOG_STRUCT = "<IiiihHHB"
+LOG_STRUCT = "<IiiihHHBH"
 
 MIN_FREE_BYTES = 200000
 MAX_LOG_FILES = 10
