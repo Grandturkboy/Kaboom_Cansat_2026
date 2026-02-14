@@ -1,6 +1,7 @@
 from machine import Pin, I2C
 from sx1262 import SX1262
 import struct, time, ssd1306, os
+from collections import deque
 
 lora = SX1262(spi_bus=1, clk=9, mosi=10, miso=11, cs=8, irq=14, rst=12, gpio=13)
 
@@ -189,10 +190,10 @@ def logData():
         oled.show()
 
 # Creating the lists for plotting and data storage
-temp1List = []
-presList = []
-timeList = []
-errList = []
+temp1List = deque((), 500)
+presList = deque((), 500)
+timeList = deque((), 500)
+errList = deque((), 500)
 
 # Start listening. Non blocking event loop
 lora.setBlockingCallback(False, callBack)
