@@ -1,6 +1,6 @@
 import serial, struct, binascii, time
 
-LOG_FORMAT = "<IiiihHHB"
+LOG_FORMAT = "<IiiihHHBH"
 RECORD_SIZE = struct.calcsize(LOG_FORMAT)
 
 p0 = 1013.25
@@ -52,10 +52,11 @@ def createDatabase(data):
             "pressure": [],
             "pAlt": [],
             "humidity": [],
-            "gpsValid": []
+            "gpsValid": [],
+            "cpm": []
         }
         for l in r:
-            ts, lat, lon, alt, temp, pres, hum, valid = l
+            ts, lat, lon, alt, temp, pres, hum, valid, cpm = l
 
             db["time"].append(ts)
             db["lat"].append(lat / 1e6)
@@ -66,6 +67,7 @@ def createDatabase(data):
             db["pAlt"].append(altFromPress(p0, pres / 10))
             db["humidity"].append(hum / 100)
             db["gpsValid"].append(bool(valid))
+            db["cpm"].append(cpm)
 
         database[rname] = db
 
@@ -73,7 +75,7 @@ def createDatabase(data):
         for rname, records in database.items():
             f.write(f"{rname}\n")
             for i, rec in enumerate(records["time"]):
-                f.write(f"{records['time'][i]},{records['lat'][i]},{records['lon'][i]},{records['alt'][i]},{records['temp'][i]},{records['pressure'][i]},{records['humidity'][i]},{records['gpsValid'][i]}\n")
+                f.write(f"{records['time'][i]},{records['lat'][i]},{records['lon'][i]},{records['alt'][i]},{records['temp'][i]},{records['pressure'][i]},{records['humidity'][i]},{records['gpsValid'][i]},{records['cpm'][i]}\n")
 
     return database
 
@@ -81,12 +83,12 @@ def printFile(fname):
     db = database[fname]
     n = len(db["time"])
 
-    print("Time        Latitude     Longitude   Altitude    Temperature   Pressure      Humidity     GPS Valid")
+    print("Time        Latitude     Longitude   Altitude    Temperature   Pressure      Humidity     GPS Valid   CPM")
 
     for i in range(n):
         date = time.localtime(db['time'][i] + 946681600)
         printTime = (f"{date.tm_year}.{date.tm_mon:02d}.{date.tm_mday:02d} {date.tm_hour:02d}:{date.tm_min:02d}:{date.tm_sec:02d}")
-        print(f"{printTime}   {db['lat'][i]:.6f}    {db['lon'][i]:.6f}    {db['alt'][i]:.1f}        {db['temp'][i]:.2f}        {db['pressure'][i]:.1f}        {db['humidity'][i]:.2f}        {db['gpsValid'][i]}")
+        print(f"{printTime}   {db['lat'][i]:.6f}    {db['lon'][i]:.6f}    {db['alt'][i]:.1f}        {db['temp'][i]:.2f}        {db['pressure'][i]:.1f}        {db['humidity'][i]:.2f}        {db['gpsValid'][i]}        {db['cpm'][i]}")
 
 def readFile():
     with open("OnBoardData.txt", "r") as f:
@@ -107,10 +109,11 @@ def readFile():
                     "temp": [],
                     "pressure": [],
                     "humidity": [],
-                    "gpsValid": []
+                    "gpsValid": [],
+                    "cpm": []
                 }
             else:
-                time, lat, lon, alt, temp, pres, hum, valid = l.split(",")
+                time, lat, lon, alt, temp, pres, hum, valid, cpm = l.split(",")
                 database[name]["time"].append(float(time))
                 database[name]["lat"].append(float(lat))
                 database[name]["lon"].append(float(lon))
@@ -119,6 +122,7 @@ def readFile():
                 database[name]["pressure"].append(float(pres))
                 database[name]["humidity"].append(float(hum))
                 database[name]["gpsValid"].append(bool(valid))
+                database[name]["cpm"].append(int(cpm))
 
     return database
 
@@ -133,7 +137,6 @@ try:
 except serial.SerialException:
     print("Serial port not found, reading file")
 
-
 allBinary = receiveFiles()
 
 if allBinary != None:
@@ -144,6 +147,7 @@ else:
 for logName, log in database.items():
     printName = logName.replace("log_", "").replace(".bin", "").replace("0", "")
     print(printName)
+    
 print("\nWhich file would you like to open?")
 openfile = int(input(""))
 actualOpenFile = f"log_{openfile:04d}.bin"
